@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/TheGlovernor/LEDLightBot#readme",
   "dependencies": {
+    "axios": "^0.20.0",
     "tmi.js": "^1.5.0"
   }
 }

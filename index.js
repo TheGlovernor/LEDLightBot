@@ -1,9 +1,11 @@
-const https = require('https');
+const axios = require('axios');
 const tmi = require('tmi.js');
+const http = require('http')
 
-const clientID = oy51xyp0o4h9ndc3pgjuf0ljao79pr;
-const channelName = TheGlovernor;
+const clientID = 'oy51xyp0o4h9ndc3pgjuf0ljao79pr';
+const channelName = 'TheGlovernor';
 
+colorList= ['Blue', 'BlueViolet', 'CadetBlue', 'Chocolate', 'Coral', 'DodgerBlue', 'Firebrick', 'GoldenRod', 'Green', 'HotPink', 'OrangeRed', 'Red', 'SeaGreen', 'SpringGreen', 'YellowGreen'];
 const firstlevelcommands = ['help', 'color']
 
 const settings = {
@@ -36,7 +38,7 @@ client.on('connected', (address, port) => {
 client.on('message', (channel, user, message, self) => {
   if(self || message[0] !== '!') return;
 
-  switch(userstate['message-type']) {
+  switch(user['message-type']) {
     case 'action':
     case 'chat':
       const commands = message.split(" ");
@@ -46,19 +48,33 @@ client.on('message', (channel, user, message, self) => {
           client.action(channel, 'Hey guy or gal, fuck you');
         }
 
+        if(commands[1] === 'ping') {
+          ping();
+        }
+
         if(commands[1] === 'color') {
           if(commands[2] === 'help') {
             // Say help message
-          } else {
-                console.log(`attempting to change to ${color}`);
-            client.color(commands[2])
-            .then((data) => {
-              client.action(channel, `I am now ${data}`); // data returns [color]
-              console.log(`changed to ${color}`);
-            }).catch((err) => {
-              client.action(channel, `${color} is not a valid color`);
-              console.log(`${color} is not a valid color`);
-            });
+          } else if(commands[2] === 'primary' || commands[2] === "secondary") {
+            let color = commands[3];
+            let level = 1;
+            if(commands[2] === 'secondary') {
+              level = 2;
+            }
+            let r = convertHex(color.substring(1,3));
+            let g = convertHex(color.substring(3,5));
+            let b = convertHex(color.substring(5,7));
+            setPrimary(level,r,g,b);
+
+                        // console.log(`attempting to change to ${color}`);
+                        // client.color(commands[2])
+                        // .then((data) => {
+                        //   client.action(channel, `I am now ${data}`); // data returns [color]
+                        //   console.log(`changed to ${color}`);
+                        // }).catch((err) => {
+                        //   client.action(channel, `${color} is not a valid color`);
+                        //   console.log(`${color} is not a valid color`);
+                        // });
           }
         }
       }
@@ -85,11 +101,47 @@ client.on('submysterygift', (channel, username, numbOfSubs, methods, userstate) 
   // Flash lights for # of gifted subs
 });
 
-//ampenroll checkbox in medicaire table
+const setPrimary = function(level,r,g,b) {
+  axios
+    .post('http://192.168.0.18/', {
+      type: "color",
+      level: level,
+      redValue: r,
+      greenValue: g,
+      blueValue: b,
+    })
+    .then(res => {
+      console.log(`response from LED controller: ${res}`)
+    })
+    .catch(err => {
+      console.log(`error from LED controller: ${err}`)
+    })
+}
 
+const ping= function() {
+  axios.get('http://192.168.0.18/ping')
+    .then(function (response) {
+      // handle success
+      console.log(response);
+    })
+    .catch(function (error) {
+      // handle error
+      console.log(error);
+    })
+    .then(function () {
+      // always executed
+    });
+
+}
+
+const convertHex = function(hexString) {
+  val = parseInt(hexString, 16);
+  console.log(`value: ${val}`)
+  return val;
+}
 // https://dev.twitch.tv/docs/api/webhooks-reference
 // Will need to use webhooks for real time follower and subscriber data.
-// This means that if I want follower or subscriber effects for my LEDs, 
+// This means that if I want follower or subscriber effects for my LEDs,
 // I will have to route the webhook back to my personal computer, or host this on the cloud and have the command go through wifi to the led lights.
 
 
