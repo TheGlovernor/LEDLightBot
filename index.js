@@ -1,13 +1,56 @@
 const axios = require('axios');
 const tmi = require('tmi.js');
-const http = require('http')
 
 const clientID = 'oy51xyp0o4h9ndc3pgjuf0ljao79pr';
 const channelName = 'TheGlovernor';
+const lightIP = 'http://192.168.0.18/'
 
+const maxFlashPerPerson = 10;
+const flashTimeOut = 6000;
+const animChangeTimeOut = 30000;
+const colorChangeTimeOut = 12000;
+
+userData = {
+  'theglovernor': 0,
+};
+
+// valid colors for twitch without turbo
 colorList= ['Blue', 'BlueViolet', 'CadetBlue', 'Chocolate', 'Coral', 'DodgerBlue', 'Firebrick', 'GoldenRod', 'Green', 'HotPink', 'OrangeRed', 'Red', 'SeaGreen', 'SpringGreen', 'YellowGreen'];
-const firstlevelcommands = ['help', 'color']
 
+// command to get the bots attention
+const att = '!led'
+
+// help commands
+const helpCmds = {
+  HELP: 'help',
+  FLASH: 'flash',
+  COLOR: 'color',
+  ANIM: 'animation'
+}
+
+// first level commands
+const topCmds = {
+  HELP: 'help',
+  FLASH: 'flash',
+  COLOR: 'color',
+  ANIM: 'animation'
+}
+
+// color commands
+const colorCmds = {
+  HELP: 'help',
+  PRIMARY: 'primary',
+  SECONDARY: 'secondary'
+}
+
+// animation commands
+const animCmds= {
+  HELP: 'help',
+  RAIN: 'rainbow',
+  FADE: 'fade'
+}
+
+// settings for tmi
 const settings = {
   options: {
     debug: true
@@ -25,7 +68,9 @@ const settings = {
 
 const client = new tmi.client(settings);
 
-client.connect();
+// client.connect();
+
+// -------------- event funcitons ------------------
 
 client.on('cheer', (channel, user, message) => {
   // flash the lights based on the amount of bits
@@ -42,41 +87,46 @@ client.on('message', (channel, user, message, self) => {
     case 'action':
     case 'chat':
       const commands = message.split(" ");
-      if(commands[0] === '!led') {
+      if(commands[0] === att) {
 
-        if(commands[1] === 'help') {
-          client.action(channel, 'Hey guy or gal, fuck you');
+        if(commands[1] === topCmds.HELP) {
+          sendHelp(channel, helpCmds.HELP);
         }
 
-        if(commands[1] === 'ping') {
-          ping();
+        if(commands[1] === topCmds.FLASH) {
+          // check if person can flash
+          if(checkFlashes(user.username) > 0) {
+            flash(1);
+            decreaseFlashes(user.username, 1);
+          } else {
+            // do something if they cant flash
+          }
         }
 
-        if(commands[1] === 'color') {
-          if(commands[2] === 'help') {
-            // Say help message
-          } else if(commands[2] === 'primary' || commands[2] === "secondary") {
+        if(commands[1] === topCmds.COLOR) {
+          if(commands[2] === colorCmds.HELP) {
+            SendHelp(channel, helpCmds.COLOR);
+          } else if(commands[2] === colorCmds.PRIMARY || commands[2] === colorCmds.SECONDARY) {
             let color = commands[3];
             let level = 1;
-            if(commands[2] === 'secondary') {
+            if(commands[2] === colorCmds.SECONDARY) {
               level = 2;
             }
             let r = convertHex(color.substring(1,3));
             let g = convertHex(color.substring(3,5));
             let b = convertHex(color.substring(5,7));
-            setPrimary(level,r,g,b);
-
-                        // console.log(`attempting to change to ${color}`);
-                        // client.color(commands[2])
-                        // .then((data) => {
-                        //   client.action(channel, `I am now ${data}`); // data returns [color]
-                        //   console.log(`changed to ${color}`);
-                        // }).catch((err) => {
-                        //   client.action(channel, `${color} is not a valid color`);
-                        //   console.log(`${color} is not a valid color`);
-                        // });
+            setColor(level,r,g,b);
           }
         }
+
+        if(commands[1] === topCmds.ANIM) {
+          if(commands[2] === helpCmds.ANIM) {
+            sendHelp(channel, helpCmds.HELP)
+          } else if (commands[2] === animCmds.RAIN) {
+            setAnim(commands[2], 10);
+          }
+        }
+
       }
       break;
     case 'whisper':
@@ -101,9 +151,24 @@ client.on('submysterygift', (channel, username, numbOfSubs, methods, userstate) 
   // Flash lights for # of gifted subs
 });
 
-const setPrimary = function(level,r,g,b) {
+// -------------------- http functions -----------------------
+
+const flash = function(amount) {
+  axios.post(lightIP, {
+    type: "flash",
+    amount: amount
+  })
+  .then(res => {
+    console.log(`response from LED controller: ${res}`)
+  })
+  .catch(err => {
+    console.log(`error from LED controller: ${err}`)
+  })
+}
+
+const setColor = function(level, r, g, b) {
   axios
-    .post('http://192.168.0.18/', {
+    .post(lightIP, {
       type: "color",
       level: level,
       redValue: r,
@@ -118,42 +183,86 @@ const setPrimary = function(level,r,g,b) {
     })
 }
 
-const ping= function() {
-  axios.get('http://192.168.0.18/ping')
-    .then(function (response) {
-      // handle success
-      console.log(response);
+const setAnim = function(anim, speed) {
+  axios
+    .post(lightIP, {
+      type: "animation",
+      anim: anim,
+      speed: speed
     })
-    .catch(function (error) {
-      // handle error
-      console.log(error);
-    })
-    .then(function () {
-      // always executed
-    });
-
 }
 
+// ------------------- utility functions ----------------------
+
+// send help message to the chat
+const sendHelp= function(channel, msg) {
+  if(msg === helpCmds.HELP) {
+    // top level help message
+    client.action(channel, `Hey guy or gal, fuck you. I haven't written this help message yet`);
+  } else if(msg === helpCmds.FLASH) {
+    // flash help message
+    client.action(channel, `Use '!led flash [number 1 through 10]' to flash me. You can only flash me up to ten times and flashes refresh at 1 per minute`);
+  } else if(msg === helpCmds.COLOR) {
+    // color help message
+    client.action(channel, `Use '!led color [primary|secondary] [color]' to change the LED's primary or secondary colors. [color] must be in hex format '#ffffff'`);
+  } else if(msg === helpCmds.ANIM) {
+    client.action(channel, `Use '!led animation [rainbow]' to change the animation`);
+  }
+}
+
+const checkFlashes = function(user) {
+  if(!userData.hasOwnProperty(user)) {
+    userData[user] = 10;
+  }
+  return userData[user];
+}
+
+const increaseFlashes = function() {
+  Object.entries(userData).forEach(([key, value]) => {
+    if(value < maxFlashPerPerson) {
+      userData[key] = value +1;
+    }
+    // console.log(`${key} ${value}`);
+  });
+}
+
+setInterval(increaseFlashes, flashTimeOut);
+
+const decreaseFlashes = function(user, n) {
+  if(userData[user] > 0) {
+    userData[user] = userData[user] - n;
+  } else {
+    userData[user] = userData[user] - n;
+    console.log(`!!!!!!!!!!!! User ${user} was able to flash when they shouldn't have`);
+  }
+}
+
+// convert hex to decimal
 const convertHex = function(hexString) {
   val = parseInt(hexString, 16);
   console.log(`value: ${val}`)
   return val;
 }
+
+// make sure the input is an int
+const getInt = function(string) {
+  const parsed = parseInt(string, 10);
+  if (isNaN(parsed)) { return 0; }
+  return parsed;
+}
+
 // https://dev.twitch.tv/docs/api/webhooks-reference
 // Will need to use webhooks for real time follower and subscriber data.
 // This means that if I want follower or subscriber effects for my LEDs,
 // I will have to route the webhook back to my personal computer, or host this on the cloud and have the command go through wifi to the led lights.
 
 
-// https://esp8266-shop.com/blog/how-to-http-get-and-post-requests-with-esp8266/
-// https://www.woolseyworkshop.com/2018/12/07/controlling-an-arduino-uno-wifi-rev2-or-arduino-uno-with-wifi-shield-from-a-web-browser/
-// https://blog.adafruit.com/2019/06/07/connecting-your-arduino-wifi-rev2-to-the-outside-world-adafruitio-arduino-wifi-iot-adafruitio/
-// https://www.arduino.cc/en/Guide/ArduinoUnoWiFiRev2
-// https://circuitdigest.com/microcontroller-projects/arduino-nodejs-tutorial-control-led-brightness-with-web-interface
-// https://medium.com/@anaganisk/connecting-johnny-five-arduino-raspberry-pi-etc-over-wifi-to-the-pc-using-esp8266-a10348fdb300
-
-// this looks like the best video so far
-// https://www.youtube.com/watch?v=hP3xQtrRMmQ
-
-// use FastLED to talk to the LED strip
-// use esp8266wifi libraries to handle incoming requests from node application
+                        // console.log(`attempting to change to ${color}`);
+                        // client.color(commands[2])
+                        // .then((data) => {
+                        //   client.action(channel, `I am now ${data}`); // data returns [color]
+                        //   console.log(`changed to ${color}`);
+                        // }).catch((err) => {
+                        //   client.action(channel, `${color} is not a valid color`);
+                        //   console.log(`${color} is not a valid color`);
+                        // });

@@ -24,15 +24,44 @@ class NeoPattern : public Adafruit_NeoPixel {
   
   void (*OnComplete)();  // Callback on completion of pattern
 
+  int Flashes; // number of flashes to do
+  bool FlashOn = false;
+  unsigned long FlashInterval = 500; // how often to flash
+  unsigned long lastFlash; // last flash step
+
   // Constructor - calls base-class constructor to initialize strip
   NeoPattern(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)())
   :Adafruit_NeoPixel(pixels, pin, type) {
     OnComplete = callback;
   }
 
+  // setters
+  void setColor1(uint32_t newColor) {
+    Color1 = newColor;
+  }
+
+  void setColor2(uint32_t newColor) {
+    Color2 = newColor;
+  }
+
+  // increase the flashes
+  void incFlash(int n) {
+    Flashes += n;
+  }
+
   // Update the pattern
   void Update() {
-    if((millis() - lastUpdate) > Interval) { // time to update 
+    if(Flashes && (millis() - lastflash) > FlashInterval) {
+      //flash
+      if(flashOn) {
+        pixels.ColorSet(Color(00,00,00));
+        flashes--;
+        flashOn = false;
+      } else {
+        pixels.ColorSet(Color(255,255,255));
+        flashOn = true;
+      }
+    } else if((millis() - lastUpdate) > Interval) { // time to update 
       lastUpdate = millis();
       switch(ActivePattern){
         case RAINBOW_CYCLE:
@@ -199,6 +228,11 @@ class NeoPattern : public Adafruit_NeoPixel {
         ColorSet(Color(red, green, blue));
         show();
         Increment();
+        if(Direction == FORWARD && Index == 0) {
+          Reverse();
+        } else if(Direction == REVERSE && Index == TotalSteps - 1) {
+          Reverse();
+        }
     }
 
 

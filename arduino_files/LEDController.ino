@@ -27,7 +27,6 @@ NeoPattern pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ400, callbackTest);
 uint32_t primaryColor = pixels.Color(150, 0, 0);
 uint32_t secondaryColor = pixels.Color(0, 150, 0);
 
-
 // put your setup code here, to run once:
 void setup() {
   Serial.begin(9600);
@@ -93,20 +92,46 @@ void loop() {
             deserializeJson(doc,input);
             JsonObject obj = doc.as<JsonObject>();
 
-            int r = obj[String("redValue")];
-            int g = obj[String("greenValue")];
-            int b = obj[String("blueValue")];
-            int level = obj[String("level")];
+            String type = obj[String("type")];
 
-            Serial.print("Level: ");
-            Serial.println(level);
-
-            if(level == 1) {
-              primaryColor = pixels.Color(r, b, g);
-            } else if(level == 2) {
-              secondaryColor = pixels.Color(r, b, g);
+            if(type == 'flash') {
+              int amtToAdd = obj[String("amount")];
+              pixels.incFlash(amtToAdd);
             }
-            
+
+            if(type == 'color') {
+              int r = obj[String("redValue")];
+              int g = obj[String("greenValue")];
+              int b = obj[String("blueValue")];
+              int level = obj[String("level")];
+
+              Serial.print("Level: ");
+              Serial.println(level);
+
+              if(level == 1) {
+                primaryColor = pixels.Color(r, b, g);
+                pixels.setColor1(primaryColor);
+              } else if(level == 2) {
+                secondaryColor = pixels.Color(r, b, g);
+                pixels.setColor2(secondaryColor);
+              }
+            }
+
+            if(type == 'anim') {
+              String anim = obj[String("anim")];
+              int speed = obj[String("speed")];
+              if(anim == "rainbow") {
+                pixels.RainbowCycle(speed);
+              } else if(anim == "chase") {
+                pixels.TheaterChase(primaryColor, secondaryColor, 100);
+              } else if(anim == "wipe") {
+                pixels.ColorWipe(primaryColor, 10);
+              } else if(anim == "scanner") {
+                pixels.Scanner(primaryColor, 100);
+              } else if(anim == "fade") {
+                pixels.Fade(primaryColor, secondaryColor, 1000, 1);
+              }
+            }
 
             // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
             // and a content-type so the client knows what's coming, then a blank line:
