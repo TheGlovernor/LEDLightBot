@@ -60,11 +60,7 @@ void setup() {
   
   pixels.begin();
   anim_init();
-//  pixels.RainbowCycle(100);
-//  pixels.ColorWipe(primaryColor, 10);
-//  pixels.TheaterChase(primaryColor, secondaryColor, 100);
-  pixels.Scanner(primaryColor, 1000);
-//  pixels.Fade(primaryColor, secondaryColor, 100, 1);
+  pixels.RainbowCycle(100);
 }
 
 // put your main code here, to run repeatedly:
@@ -93,13 +89,14 @@ void loop() {
             JsonObject obj = doc.as<JsonObject>();
 
             String type = obj[String("type")];
+            Serial.println(type);
 
-            if(type == 'flash') {
+            if(type == "flash") {
               int amtToAdd = obj[String("amount")];
               pixels.incFlash(amtToAdd);
             }
 
-            if(type == 'color') {
+            if(type == "color") {
               int r = obj[String("redValue")];
               int g = obj[String("greenValue")];
               int b = obj[String("blueValue")];
@@ -117,15 +114,16 @@ void loop() {
               }
             }
 
-            if(type == 'anim') {
+            if(type == "animation") {
               String anim = obj[String("anim")];
               int speed = obj[String("speed")];
+              Serial.println("at least i got here");
               if(anim == "rainbow") {
                 pixels.RainbowCycle(speed);
               } else if(anim == "chase") {
                 pixels.TheaterChase(primaryColor, secondaryColor, 100);
               } else if(anim == "wipe") {
-                pixels.ColorWipe(primaryColor, 10);
+                pixels.ColorWipe(primaryColor, secondaryColor, 100);
               } else if(anim == "scanner") {
                 pixels.Scanner(primaryColor, 100);
               } else if(anim == "fade") {
@@ -167,23 +165,6 @@ void loop() {
   }
 
   pixels.Update();
-  
-//  pixels.clear();
-
-  // colors are in order of (r, b ,g) for some reason??
-//  for(int i=0; i<NUMPIXELS; i++) {
-//    pixels.setPixelColor(i, primaryColor);
-//    pixels.show();
-//    delay(DELAYVAL_MOV);
-//  }
-//  
-//  for(int i=NUMPIXELS; i>0; i--) {
-//    pixels.setPixelColor(i, secondaryColor);
-//    pixels.show();
-//    delay(DELAYVAL_MOV);
-//  }
-
-//  alternatingFlash(20);
   
 }
 

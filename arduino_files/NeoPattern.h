@@ -26,8 +26,8 @@ class NeoPattern : public Adafruit_NeoPixel {
 
   int Flashes; // number of flashes to do
   bool FlashOn = false;
-  unsigned long FlashInterval = 500; // how often to flash
-  unsigned long lastFlash; // last flash step
+  unsigned long FlashInterval = 100; // how often to flash
+  unsigned long lastFlash; // last flash update time
 
   // Constructor - calls base-class constructor to initialize strip
   NeoPattern(uint16_t pixels, uint8_t pin, uint8_t type, void (*callback)())
@@ -46,22 +46,27 @@ class NeoPattern : public Adafruit_NeoPixel {
 
   // increase the flashes
   void incFlash(int n) {
-    Flashes += n;
+    if(Flashes) {
+      Flashes += n;
+    } else {
+      Flashes += n + 1;
+    }
   }
 
   // Update the pattern
   void Update() {
-    if(Flashes && (millis() - lastflash) > FlashInterval) {
+    if(Flashes && (millis() - lastFlash) > FlashInterval) {
+      lastFlash = millis();
       //flash
-      if(flashOn) {
-        pixels.ColorSet(Color(00,00,00));
-        flashes--;
-        flashOn = false;
+      if(FlashOn) {
+        ColorSet(Color(00,00,00));
+        Flashes--;
+        FlashOn = false;
       } else {
-        pixels.ColorSet(Color(255,255,255));
-        flashOn = true;
+        ColorSet(Color(255,255,255));
+        FlashOn = true;
       }
-    } else if((millis() - lastUpdate) > Interval) { // time to update 
+    } else if((millis() - lastUpdate) > Interval && !Flashes) { // time to update 
       lastUpdate = millis();
       switch(ActivePattern){
         case RAINBOW_CYCLE:
@@ -125,20 +130,31 @@ class NeoPattern : public Adafruit_NeoPixel {
   }
 
   // Initialize for a ColorWipe
-    void ColorWipe(uint32_t color, uint8_t interval, direction dir = FORWARD)
+    void ColorWipe(uint32_t color1, uint32_t color2, uint8_t interval)
     {
         ActivePattern = COLOR_WIPE;
         Interval = interval;
-        TotalSteps = numPixels();
-        Color1 = color;
+        TotalSteps = (numPixels() - 1) * 2;
+        Color1 = color1;
+        Color2 = color2;
         Index = 0;
-        Direction = dir;
     }
 
   // Update the Color Wipe Pattern
-    void ColorWipeUpdate()
-    {
-        setPixelColor(Index, Color1);
+    void ColorWipeUpdate() {
+    for (int i = 0; i < numPixels(); i++)
+        {
+            if (i == Index) // first half of the scan
+            {
+                Serial.print(i);
+                setPixelColor(i, Color1);
+            }
+            else if (i == TotalSteps - Index) // The return trip.
+            {
+                Serial.print(i);
+                setPixelColor(i, Color2);
+            }
+        }
         show();
         Increment();
     }
@@ -228,11 +244,6 @@ class NeoPattern : public Adafruit_NeoPixel {
         ColorSet(Color(red, green, blue));
         show();
         Increment();
-        if(Direction == FORWARD && Index == 0) {
-          Reverse();
-        } else if(Direction == REVERSE && Index == TotalSteps - 1) {
-          Reverse();
-        }
     }
 
 

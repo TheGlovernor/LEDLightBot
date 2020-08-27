@@ -1,9 +1,11 @@
 const axios = require('axios');
 const tmi = require('tmi.js');
+const fs = require('fs');
 
+const secrets = JSON.parse(fs.readFileSync('secrets.json'));
 const clientID = 'oy51xyp0o4h9ndc3pgjuf0ljao79pr';
 const channelName = 'TheGlovernor';
-const lightIP = 'http://192.168.0.18/'
+const lightIP = 'http://192.168.0.17/'
 
 const maxFlashPerPerson = 10;
 const flashTimeOut = 6000;
@@ -11,7 +13,7 @@ const animChangeTimeOut = 30000;
 const colorChangeTimeOut = 12000;
 
 userData = {
-  'theglovernor': 0,
+  'theglovernor': 12000,
 };
 
 // valid colors for twitch without turbo
@@ -47,7 +49,10 @@ const colorCmds = {
 const animCmds= {
   HELP: 'help',
   RAIN: 'rainbow',
-  FADE: 'fade'
+  FADE: 'fade',
+  CHASE: 'chase',
+  WIPE: 'wipe',
+  SCAN: 'scanner'
 }
 
 // settings for tmi
@@ -61,14 +66,14 @@ const settings = {
   },
   identity: {
     username: 'LEDLightBot',
-    password: ''
+    password: secrets.password
   },
   channels: [channelName]
 }
 
 const client = new tmi.client(settings);
 
-// client.connect();
+client.connect();
 
 // -------------- event funcitons ------------------
 
@@ -96,7 +101,7 @@ client.on('message', (channel, user, message, self) => {
         if(commands[1] === topCmds.FLASH) {
           // check if person can flash
           if(checkFlashes(user.username) > 0) {
-            flash(1);
+            flash(commands[2]);
             decreaseFlashes(user.username, 1);
           } else {
             // do something if they cant flash
@@ -121,8 +126,8 @@ client.on('message', (channel, user, message, self) => {
 
         if(commands[1] === topCmds.ANIM) {
           if(commands[2] === helpCmds.ANIM) {
-            sendHelp(channel, helpCmds.HELP)
-          } else if (commands[2] === animCmds.RAIN) {
+            sendHelp(channel, helpCmds.ANIM)
+          } else if (commands[2] === animCmds.RAIN || commands[2] === animCmds.FADE || commands[2] === animCmds.SCAN || commands[2] === animCmds.CHASE || commands[2] === animCmds.WIPE) {
             setAnim(commands[2], 10);
           }
         }
@@ -154,6 +159,7 @@ client.on('submysterygift', (channel, username, numbOfSubs, methods, userstate) 
 // -------------------- http functions -----------------------
 
 const flash = function(amount) {
+  console.log('sending flash!');
   axios.post(lightIP, {
     type: "flash",
     amount: amount
@@ -167,6 +173,7 @@ const flash = function(amount) {
 }
 
 const setColor = function(level, r, g, b) {
+  console.log('setting color!');
   axios
     .post(lightIP, {
       type: "color",
@@ -184,6 +191,7 @@ const setColor = function(level, r, g, b) {
 }
 
 const setAnim = function(anim, speed) {
+  console.log('setting animation');
   axios
     .post(lightIP, {
       type: "animation",
